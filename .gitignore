@@ -2,4 +2,4 @@ target
 *.class
 *.impl
 *.ipr
-.idea/
+.idea
