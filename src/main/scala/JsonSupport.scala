@@ -1,9 +1,6 @@
-/*
- * https://doc.akka.io/docs/akka-http/current/common/json-support.html
- */
-
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
+
 
 // Domain models
 final case class Shoe(name: String)
