@@ -1,40 +1,73 @@
-import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
-import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
+import akka.http.scaladsl.server.Route
+import com.softwaremill.session.{SessionConfig, SessionManager}
+import com.softwaremill.session.SessionDirectives.{invalidateSession, requiredSession, setSession}
+import com.softwaremill.session.SessionOptions.{oneOff, usingHeaders}
+import com.typesafe.config.Config
+import com.typesafe.scalalogging.LazyLogging
 
-import scala.io.StdIn
 
-object WebServer extends App with JsonSupport {
-  implicit val system = ActorSystem()
-  implicit val executor = system.dispatcher
-  implicit val materializer = ActorMaterializer()
+final class WebServer(configuration: Config) extends LazyLogging {
+  private val config = configuration
+  private val sessionConfig = SessionConfig.fromConfig() // looking for "akka.http.session.server-secret" in application.conf
+  private implicit val sessionManager = new SessionManager[String](sessionConfig)
 
-  val route =
-    path("hello") {
-      get {
-        complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "<h1>Say hello to akka-http</h1>"))
-      }
+  def createRoutes: Route = {
+    pathSingleSlash {
+      complete(jsonHttpEntity(s"""{"body":"Shoe Dawg API V${config.getDouble("api.version")}"}"""))
     } ~
-    path("shoe") {
-      get {
-        complete(Shoe("Air Force 1"))
-      }
-    } ~
-    path("shoes") {
-      post {
-        entity(as[Shoe]) { shoe =>
-          complete(s"shoe: ${shoe.name}")
+      pathPrefix("api") {
+        path("login") {
+          post {
+            entity(as[String]) { body =>
+              logger.info(s"Logging in $body")
+              mySetSession(body) { ctx =>
+                ctx.complete("ok")
+              }
+            }
+          }
+        } ~
+        path("logout") {
+          post {
+            myRequiredSession { session =>
+              myInvalidateSession { ctx =>
+                logger.info(s"Logging out $session")
+                ctx.complete("ok")
+              }
+            }
+          }
+        } ~
+        path("current_login") {
+          get {
+            myRequiredSession { session =>
+              ctx =>
+                logger.info(s"Current session: $session")
+                ctx.complete("ok")
+            }
+          }
         }
       }
-    }
 
-  val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
+    //    path("shoe") {
+    //      get {
+    //        complete(Shoe("Air Force 1"))
+    //      }
+    //    } ~
+    //    path("shoes") {
+    //      post {
+    //        entity(as[Shoe]) { shoe =>
+    //          complete(s"shoe: ${shoe.name}")
+    //        }
+    //      }
+    //    }
+  }
 
-  println(s"Server online at http://localhost:8080/\nPress RETURN to stop...")
-  StdIn.readLine() // let it run until user presses return
-  bindingFuture
-    .flatMap(_.unbind()) // trigger unbinding from the port
-    .onComplete(_ => system.terminate()) // and shutdown when done
+  private def jsonHttpEntity(s: String) = HttpEntity(ContentTypes.`application/json`, s)
+
+  // Implicit SessionManager required for below
+  private def mySetSession(v: String) = setSession(oneOff, usingHeaders, v)
+  private def myRequiredSession = requiredSession(oneOff, usingHeaders)
+  private def myInvalidateSession = invalidateSession(oneOff, usingHeaders)
 }
+

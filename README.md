@@ -6,3 +6,4 @@ Once Intellij is up go to plugins and download Scala and SBT.
 # Commands
 sbt run
 sbt test
+sbt scalastyle
