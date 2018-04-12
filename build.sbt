@@ -1,6 +1,7 @@
 name := "shoe-dawg-backend"
 version := "1.0"
 scalaVersion := "2.12.5"
+dockerBaseImage := "openjdk:jre-alpine"
 
 libraryDependencies ++= {
   val akkaV = "2.5.11"
@@ -20,3 +21,8 @@ libraryDependencies ++= {
     "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpV % Test
   )
 }
+
+
+enablePlugins(JavaAppPackaging)
+enablePlugins(DockerPlugin)
+enablePlugins(AshScriptPlugin)
