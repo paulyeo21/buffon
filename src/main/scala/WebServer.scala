@@ -8,8 +8,7 @@ import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
 
 
-final class WebServer(configuration: Config) extends LazyLogging {
-  private val config = configuration
+final class WebServer(config: Config) extends LazyLogging {
   private val sessionConfig = SessionConfig.fromConfig() // looking for "akka.http.session.server-secret" in application.conf
   private implicit val sessionManager = new SessionManager[String](sessionConfig)
 
