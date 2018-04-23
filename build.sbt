@@ -16,6 +16,7 @@ libraryDependencies ++= {
     "com.typesafe.scala-logging" %% "scala-logging" % "3.8.0",
     "com.softwaremill.akka-http-session" %% "core" % "0.5.3" exclude("com.typesafe.akka", "akka-http"),
     "com.typesafe" % "config" % "1.3.2",
+    "com.lightbend.akka" %% "akka-stream-alpakka-cassandra" % "0.18",
     "org.scalatest" %% "scalatest" % scalaTestV % Test,
     "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpV % Test
   )
