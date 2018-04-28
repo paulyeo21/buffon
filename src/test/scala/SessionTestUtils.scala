@@ -11,7 +11,10 @@ trait SessionTestUtils { this: ScalatestRouteTest =>
 
   object SessionTestUtils {
     def getSessionToken = header(sessionConfig.sessionHeaderConfig.sendToClientHeaderName).map(_.value)
+    def getRefreshToken = header(sessionConfig.refreshTokenHeaderConfig.sendToClientHeaderName).map(_.value)
     def sessionIsExpired = getSessionToken.contains("")
+    def refreshTokenIsExpired = getRefreshToken.contains("")
     def setSessionHeader(s: String) = RawHeader(sessionConfig.sessionHeaderConfig.getFromClientHeaderName, s)
+    def setRefreshTokenHeader(s: String) = RawHeader(sessionConfig.refreshTokenHeaderConfig.getFromClientHeaderName, s)
   }
 }

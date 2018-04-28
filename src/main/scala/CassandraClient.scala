@@ -59,6 +59,8 @@ class CassandraClient(config: Config) extends LazyLogging {
     session.execute(s"CREATE KEYSPACE IF NOT EXISTS $keyspace WITH replication = {'class': 'NetworkTopologyStrategy', 'datacenter1': 1} AND durable_writes = true;")
     logger.info(s"CREATE TABLE IF NOT EXISTS $keyspace.users")
     session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.users (email text PRIMARY KEY, password_hash text);")
+    logger.info(s"CREATE TABLE IF NOT EXISTS $keyspace.refresh_tokens")
+    session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.refresh_tokens (selector text PRIMARY KEY, hash text, expiration time, sessionData text);")
   }
 
   def close(): Unit = {
@@ -68,7 +70,7 @@ class CassandraClient(config: Config) extends LazyLogging {
 
   // WARNING: DANGER
   def flush(yes: Boolean = false): Unit = {
-    val tables = Seq("users")
+    val tables = Seq("users", "refresh_tokens")
     tables.foreach { table =>
       logger.info(s"TRUNCATE TABLE $keyspace.$table ($yes)")
       if (yes) {
@@ -85,31 +87,52 @@ class CassandraClient(config: Config) extends LazyLogging {
     }
   }
 
-  def insertUser(email: String, password: String): Future[ResultSet] = {
+  // ExecuteAsync throws an Exception when it should report a failed future...
+  // https://www.datastax.com/dev/blog/cassandra-error-handling-done-right
+  // https://datastax-oss.atlassian.net/browse/JAVA-1020
+  def insertUser(email: String, password: String): Future[Boolean] = {
     val passwordHash = BCrypt.hashpw(password, BCrypt.gensalt(10))
-    execute(cql"INSERT INTO $keyspace.users(email, password_hash) VALUES (?, ?) IF NOT EXISTS"
-      .map(_.bind(email, passwordHash)))
-  }
-
-  def selectUser(email: String): Future[Option[User]] = {
     for {
-      resultSet <- execute(cql"SELECT * FROM $keyspace.users WHERE email = ? LIMIT 1".map(_.bind(email)))
-      row = parseOne(resultSet)
+      rs <- session.executeAsync(s"INSERT INTO $keyspace.users(email, password_hash) VALUES ('$email', '$passwordHash') IF NOT EXISTS")
     } yield {
-      row.map(buildUser)
+      rs.wasApplied()
     }
   }
 
-//  def selectUserHash(email: String): Future[Option[String]] = {
-//    for {
-//      resultSet <- execute(cql"SELECT password_hash FROM $keyspace.users WHERE email = ? LIMIT 1".map(_.bind(email)))
+  def selectUser(query: String, column: String): Future[Option[User]] = for {
+    rs <- execute(cql"SELECT * FROM $keyspace.users WHERE $column = ? LIMIT 1".map(_.bind(query)))
+    row = parseOne(rs)
+  } yield {
+    row.map(buildUser)
+  }
 
-//      row = parseOne(resultSet)
-//    } yield {
-//      row.map(_.getString("password_hash"))
-//    }
-//  }
-//
+  def deleteUser(query: String, column: String): Future[Boolean] = for {
+    rs <- execute(cql"DELETE FROM $keyspace.users WHERE $column = ? IF EXISTS"
+      .map(_.bind(query)))
+  } yield {
+    rs.wasApplied()
+  }
+
+  def insertRefreshToken(selector: String, hash: String, expiration: Long, sessionData: String): Future[Boolean] = for {
+    rs <- session.executeAsync(s"INSERT INTO $keyspace.refresh_tokens(selector, hash, expiration, sessionData) VALUES " +
+      s"('$selector', '$hash', '$expiration', '$sessionData') IF NOT EXISTS")
+  } yield {
+    rs.wasApplied()
+  }
+
+  def selectRefreshToken(selector: String): Future[Option[RefreshToken]] = for {
+    rs <- session.executeAsync(s"SELECT * FROM $keyspace.refresh_tokens WHERE selector = '$selector' LIMIT 1")
+    row = parseOne(rs)
+  } yield {
+    row.map(buildRefreshToken)
+  }
+
+  def deleteRefreshToken(selector: String): Future[Boolean] = for {
+    rs <- session.executeAsync(s"DELETE FROM $keyspace.refresh_tokens WHERE selector = '$selector' IF EXISTS")
+  } yield {
+    rs.wasApplied()
+  }
+
 //  def selectUser(email: String, password: String): Future[Option[User]] = {
 //    val passwordHashF = selectUserHash(email)
 //    val query = cql"SELECT email, password_hash FROM $keyspace.users WHERE email = ? AND password_hash = ? LIMIT 1 ALLOW FILTERING"
@@ -128,5 +151,13 @@ class CassandraClient(config: Config) extends LazyLogging {
     val email = r.getString("email")
     val passwordHash = r.getString("password_hash")
     User(email, passwordHash)
+  }
+
+  private def buildRefreshToken(r: Row): RefreshToken = {
+    val selector = r.getString("selector")
+    val hash = r.getString("hash")
+    val expiration = r.getLong("expiration")
+    val sessionData = r.getString("sessionData")
+    RefreshToken(selector, hash, expiration, sessionData)
   }
 }

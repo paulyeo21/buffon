@@ -6,8 +6,9 @@ import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 
 
-class WebServerSpec extends FlatSpec
-  with Matchers with ScalatestRouteTest with SessionTestUtils with JsonSupport with BeforeAndAfter with BeforeAndAfterAll {
+class WebServerSpec extends FlatSpec with Matchers with ScalatestRouteTest with SessionTestUtils with JsonSupport with BeforeAndAfter with BeforeAndAfterAll {
+  import SessionTestUtils._
+
   private implicit val cassandraClient = new CassandraClient(config)
   private val app = new WebServer(config)
   private val routes = app.createRoutes
@@ -59,8 +60,9 @@ class WebServerSpec extends FlatSpec
 
       Get("/api/login") ~> addCredentials(validCredentials) ~> routes ~> check {
         status shouldBe StatusCodes.OK
-        SessionTestUtils.getSessionToken shouldBe 'defined
-        SessionTestUtils.sessionIsExpired shouldBe false
+        getSessionToken shouldBe 'defined
+        getRefreshToken shouldBe 'defined
+        sessionIsExpired shouldBe false
       }
     }
   }
@@ -68,6 +70,21 @@ class WebServerSpec extends FlatSpec
   it should "respond with 401 if user does not exist" in {
     Get("/api/login") ~> addCredentials(validCredentials) ~> Route.seal(routes) ~> check {
       status shouldEqual StatusCodes.Unauthorized
+    }
+  }
+
+  it should "set a new refresh token when the session is set again" in {
+    Post("/api/users", user) ~> routes ~> check {
+      status shouldBe StatusCodes.Created
+
+      Get("/api/login") ~> addCredentials(validCredentials) ~> routes ~> check {
+        val Some(token1) = getRefreshToken
+
+        Get("/api/login") ~> addCredentials(validCredentials) ~> routes ~> check {
+          val Some(token2) = getRefreshToken
+          token1 should not be token2
+        }
+      }
     }
   }
 
@@ -85,11 +102,16 @@ class WebServerSpec extends FlatSpec
       status shouldBe StatusCodes.Created
 
       Get("/api/login") ~> addCredentials(validCredentials) ~> routes ~> check {
-        val Some(sessionToken) = SessionTestUtils.getSessionToken
+        val Some(sessionToken) = getSessionToken
+        val Some(refreshToken) = getRefreshToken
 
-        Post("/api/logout") ~> addHeader(SessionTestUtils.setSessionHeader(sessionToken)) ~> routes ~> check {
+        Post("/api/logout") ~>
+          addHeader(setSessionHeader(sessionToken)) ~>
+          addHeader(setRefreshTokenHeader(refreshToken)) ~>
+          routes ~> check {
           status shouldBe StatusCodes.OK
-          SessionTestUtils.sessionIsExpired shouldBe true
+          sessionIsExpired shouldBe true
+          refreshTokenIsExpired shouldBe true
         }
       }
     }
@@ -100,10 +122,10 @@ class WebServerSpec extends FlatSpec
       status shouldBe StatusCodes.Created
 
       Get("/api/login") ~> addCredentials(validCredentials) ~> routes ~> check {
-        val Some(sessionToken) = SessionTestUtils.getSessionToken
+        val Some(sessionToken) = getSessionToken
         val tamperedSession = sessionToken + "tampered"
 
-        Post("/api/logout") ~> addHeader(SessionTestUtils.setSessionHeader(tamperedSession)) ~> Route.seal(routes) ~> check {
+        Post("/api/logout") ~> addHeader(setSessionHeader(tamperedSession)) ~> Route.seal(routes) ~> check {
           status shouldEqual StatusCodes.Forbidden
           responseAs[String] shouldEqual "The supplied authentication is not authorized to access this resource"
         }
@@ -125,11 +147,11 @@ class WebServerSpec extends FlatSpec
       status shouldBe StatusCodes.Created
 
       Get("/api/login") ~> addCredentials(validCredentials) ~> routes ~> check {
-        val Some(sessionToken) = SessionTestUtils.getSessionToken
+        val Some(sessionToken) = getSessionToken
 
-        Get("/api/current_login") ~> addHeader(SessionTestUtils.setSessionHeader(sessionToken)) ~> routes ~> check {
+        Get("/api/current_login") ~> addHeader(setSessionHeader(sessionToken)) ~> routes ~> check {
           status shouldBe StatusCodes.OK
-          SessionTestUtils.sessionIsExpired shouldBe false
+          sessionIsExpired shouldBe false
         }
       }
     }
@@ -140,10 +162,10 @@ class WebServerSpec extends FlatSpec
       status shouldBe StatusCodes.Created
 
       Get("/api/login") ~> addCredentials(validCredentials) ~> routes ~> check {
-        val Some(sessionToken) = SessionTestUtils.getSessionToken
+        val Some(sessionToken) = getSessionToken
         val tamperedSession = sessionToken + "tampered"
 
-        Get("/api/current_login") ~> addHeader(SessionTestUtils.setSessionHeader(tamperedSession)) ~> Route.seal(routes) ~> check {
+        Get("/api/current_login") ~> addHeader(setSessionHeader(tamperedSession)) ~> Route.seal(routes) ~> check {
           status shouldEqual StatusCodes.Forbidden
         }
       }
