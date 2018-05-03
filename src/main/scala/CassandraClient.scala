@@ -1,7 +1,7 @@
 import com.datastax.driver.core._
 import com.google.common.util.concurrent.{FutureCallback, Futures, ListenableFuture}
 import com.typesafe.config.Config
-import com.typesafe.scalalogging.LazyLogging
+import com.typesafe.scalalogging.StrictLogging
 import org.mindrot.jbcrypt.BCrypt
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -43,7 +43,7 @@ object CassandraUtils {
   def parseOne(resultSet: ResultSet): Option[Row] = Option(resultSet.one())
 }
 
-class CassandraClient(config: Config) extends LazyLogging {
+class CassandraClient(config: Config) {
   import CassandraUtils._
 
   private val keyspace = config.getString("cassandra.keyspace")
@@ -55,9 +55,9 @@ class CassandraClient(config: Config) extends LazyLogging {
   private implicit val session = cluster.connect()
 
   def seed(): Unit = {
-    logger.info(s"CREATE KEYSPACE IF NOT EXISTS $keyspace")
+//    logger.info(s"CREATE KEYSPACE IF NOT EXISTS $keyspace")
     session.execute(s"CREATE KEYSPACE IF NOT EXISTS $keyspace WITH replication = {'class': 'NetworkTopologyStrategy', 'datacenter1': 1} AND durable_writes = true;")
-    logger.info(s"CREATE TABLE IF NOT EXISTS $keyspace.users")
+//    logger.info(s"CREATE TABLE IF NOT EXISTS $keyspace.users")
     session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.users (email text PRIMARY KEY, password_hash text);")
   }
 
@@ -70,7 +70,7 @@ class CassandraClient(config: Config) extends LazyLogging {
   def flush(yes: Boolean = false): Unit = {
     val tables = Seq("users")
     tables.foreach { table =>
-      logger.info(s"TRUNCATE TABLE $keyspace.$table ($yes)")
+//      logger.info(s"TRUNCATE TABLE $keyspace.$table ($yes)")
       if (yes) {
         session.execute(s"TRUNCATE TABLE $keyspace.$table")
       }
@@ -79,7 +79,7 @@ class CassandraClient(config: Config) extends LazyLogging {
 
   // WARNING: DANGER
   def cleanUp(yes: Boolean = false): Unit = {
-    logger.info(s"DROP KEYSPACE IF EXISTS $keyspace ($yes)")
+//    logger.info(s"DROP KEYSPACE IF EXISTS $keyspace ($yes)")
     if (yes) {
       session.execute(s"DROP KEYSPACE IF EXISTS $keyspace")
     }
