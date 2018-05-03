@@ -4,7 +4,7 @@ import akka.http.scaladsl.server.{ExceptionHandler, Route}
 import com.datastax.driver.core.exceptions.InvalidQueryException
 import com.softwaremill.session.{SessionConfig, SessionManager}
 import com.softwaremill.session.SessionDirectives.{invalidateSession, requiredSession, setSession}
-import com.softwaremill.session.SessionOptions.{oneOff, usingHeaders}
+import com.softwaremill.session.SessionOptions.{refreshable, usingHeaders}
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
 import org.mindrot.jbcrypt.BCrypt
@@ -14,8 +14,9 @@ import scala.concurrent.ExecutionContext
 
 class WebServer(config: Config)(implicit cassandraClient: CassandraClient) extends LazyLogging with JsonSupport with CustomDirectives {
   private val sessionConfig = SessionConfig.fromConfig() // looking for "akka.http.session.server-secret" in application.conf
-  private implicit val sessionManager = new SessionManager[String](sessionConfig)
   private implicit val executor = ExecutionContext.global
+  private implicit val sessionManager = new SessionManager[String](sessionConfig)
+  private implicit val refreshTokenStorage = new CassandraRefreshTokenStorage(logger)
 
   def createRoutes: Route = handleExceptions(myExceptionHandler) {
     pathSingleSlash {
@@ -25,9 +26,9 @@ class WebServer(config: Config)(implicit cassandraClient: CassandraClient) exten
         path("login") {
           get {
             // Note: experiencing weird Intellij error highlighting
-            customAuthenticateBasicAsync("", myUserPassAuthenticator) { case User(email, hash) =>
+            customAuthenticateBasicAsync("", myUserPassAuthenticator) { case User(email, passwordHash) =>
               mySetSession(email) { ctx =>
-                logger.info(s"Logging in $email}")
+                logger.info(s"Logging in $email")
                 ctx.complete(HttpResponse(StatusCodes.OK))
               }
             }
@@ -75,7 +76,7 @@ class WebServer(config: Config)(implicit cassandraClient: CassandraClient) exten
   }
 
   private def myUserPassAuthenticator(email: String, password: String)(implicit cassandraClient: CassandraClient) = for {
-    userF <- cassandraClient.selectUser(email)
+    userF <- cassandraClient.selectUser(email, "email")
   } yield for {
     user <- userF
     if BCrypt.checkpw(password, user.password)
@@ -84,8 +85,8 @@ class WebServer(config: Config)(implicit cassandraClient: CassandraClient) exten
   }
 
   // Implicit SessionManager required for below
-  private def mySetSession(v: String) = setSession(oneOff, usingHeaders, v)
-  private def myRequiredSession = requiredSession(oneOff, usingHeaders)
-  private def myInvalidateSession = invalidateSession(oneOff, usingHeaders)
+  private def mySetSession(v: String) = setSession(refreshable, usingHeaders, v)
+  private def myRequiredSession = requiredSession(refreshable, usingHeaders)
+  private def myInvalidateSession = invalidateSession(refreshable, usingHeaders)
 }
 
