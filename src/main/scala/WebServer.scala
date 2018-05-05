@@ -1,7 +1,10 @@
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpResponse, StatusCodes}
 import akka.http.scaladsl.server.{ExceptionHandler, Route}
+import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import com.datastax.driver.core.exceptions.InvalidQueryException
+import com.sksamuel.elastic4s.http.HttpClient
 import com.softwaremill.session.{SessionConfig, SessionManager}
 import com.softwaremill.session.SessionDirectives.{invalidateSession, requiredSession, setSession}
 import com.softwaremill.session.SessionOptions.{refreshable, usingHeaders}
@@ -12,7 +15,7 @@ import org.mindrot.jbcrypt.BCrypt
 import scala.concurrent.ExecutionContext
 
 
-class WebServer(config: Config)(implicit cassandraClient: CassandraClient) extends LazyLogging with JsonSupport with CustomDirectives {
+class WebServer(config: Config)(implicit cassandraClient: CassandraClient, esClient: HttpClient, materializer: ActorMaterializer) extends LazyLogging with JsonSupport with CustomDirectives {
   private val sessionConfig = SessionConfig.fromConfig() // looking for "akka.http.session.server-secret" in application.conf
   private implicit val executor = ExecutionContext.global
   private implicit val sessionManager = new SessionManager[String](sessionConfig)
@@ -61,6 +64,15 @@ class WebServer(config: Config)(implicit cassandraClient: CassandraClient) exten
               }
             }
           }
+        } ~
+        path("shoes") {
+          post {
+            entity(as[Shoe]) { shoe =>
+              onSuccess(createShoeDocument(shoe)) { result =>
+                complete(HttpResponse(StatusCodes.Created))
+              }
+            }
+          }
         }
       }
   }
@@ -82,6 +94,34 @@ class WebServer(config: Config)(implicit cassandraClient: CassandraClient) exten
     if BCrypt.checkpw(password, user.password)
   } yield {
     user
+  }
+
+  private def createShoeDocument(shoe: Shoe)(implicit esClient: HttpClient, materializer: ActorMaterializer) = {
+    import com.sksamuel.elastic4s.http.ElasticDsl._
+
+    val source = Source.single(shoe)
+    val flow =
+      Flow[Shoe].mapAsyncUnordered(parallelism = 1) { s =>
+        esClient.execute {
+          indexInto("shoe" / "type1").fields("name" -> s.name)
+        }
+      }
+    val sink = Sink.ignore
+    val r = source.via(flow).toMat(sink)(Keep.right)
+    r.run()
+
+//    val g = RunnableGraph.fromGraph(GraphDSL.create() {
+//      implicit builder =>
+//        import GraphDSL.Implicits._
+//
+//        val A: Outlet[Shoe] = builder.add(Source.single(shoe)).out
+//        val B = builder.add(createShoeDocument)
+//        val C = builder.add(Sink.ignore).in
+//
+//        A ~> B ~> C
+//        ClosedShape
+//    })
+//    g.run()
   }
 
   // Implicit SessionManager required for below
