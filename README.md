@@ -67,7 +67,6 @@ Content-Length: 0
 
 GET /api/current_login
 ```
-
 $ curl -i -H 'Refresh-Token: hk97pmcojiikm5nt:ade4tav783bmhr16olfslo28cqlet8pb461cgr3okdf3431ll1ptcmq6bg7ic0j9' http://localhost:8080/api/current_login
 
 HTTP/1.1 200 OK
@@ -76,4 +75,27 @@ Set-Refresh-Token: 465ajtq875isjvh:dbcs7a57d4pu4fk0ijdj4usrs5f4ikg46v1nuko5smae0
 Server: akka-http/10.1.0
 Date: Wed, 02 May 2018 22:37:00 GMT
 Content-Length: 0
+```
+
+POST /api/shoes
+```
+$ curl -i -X POST -H 'Content-Type: application/json' -d '{"name":"kyrie_2", "brand":"nike", "createdAt":1526510931721}' http://localhost:8080/api/shoes 
+
+HTTP/1.1 201 Created
+Server: akka-http/10.1.1
+Date: Wed, 16 May 2018 23:05:28 GMT
+Content-Length: 0
+```
+
+GET /api/search
+```
+$ curl -i GET 'http://localhost:8080/api/search?q=niek'
+
+HTTP/1.1 200 OK
+Server: akka-http/10.1.1
+Date: Wed, 16 May 2018 23:04:06 GMT
+Content-Type: application/json
+Content-Length: 77
+
+["{\"name\":\"air force 1\",\"brand\":\"nike\",\"createdAt\":1526510931721}"]%    
 ```

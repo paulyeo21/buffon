@@ -1,3 +1,5 @@
+package buffon
+
 import com.softwaremill.session.{Crypto, SessionUtil}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{BeforeAndAfter, BeforeAndAfterAll, FlatSpec, Matchers}
@@ -9,8 +11,8 @@ import scala.concurrent.duration.Duration
 class CassandraClientSpec extends FlatSpec
   with Matchers with BeforeAndAfter with BeforeAndAfterAll with JsonSupport {
   private val config = ConfigFactory.load()
-  private implicit val cassandraClient = new CassandraClient(config)
   private implicit val executor = ExecutionContext.global
+  private implicit val cassandraClient = new CassandraClient(config)
 
   val email = "fugazzi@gmail.com"
   val password = "password"
