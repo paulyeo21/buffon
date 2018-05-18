@@ -1,3 +1,5 @@
+package buffon
+
 import akka.http.scaladsl.model.headers.{BasicHttpCredentials, HttpChallenges}
 import akka.http.scaladsl.server.directives._
 import akka.http.scaladsl.util.FastFuture._

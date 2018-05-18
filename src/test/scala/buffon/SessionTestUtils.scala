@@ -1,3 +1,5 @@
+package buffon
+
 import akka.http.scaladsl.model.headers.RawHeader
 import com.softwaremill.session.{SessionConfig, SessionManager}
 import com.typesafe.config.ConfigFactory

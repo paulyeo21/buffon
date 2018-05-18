@@ -1,3 +1,5 @@
+package buffon
+
 import com.softwaremill.session.{RefreshTokenData, RefreshTokenLookupResult, RefreshTokenStorage}
 import com.typesafe.scalalogging.Logger
 

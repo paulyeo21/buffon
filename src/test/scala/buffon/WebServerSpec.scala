@@ -1,3 +1,5 @@
+package buffon
+
 import org.scalatest.{BeforeAndAfter, BeforeAndAfterAll, FlatSpec, Matchers}
 import akka.http.scaladsl.model.ContentTypes._
 import akka.http.scaladsl.model.StatusCodes
@@ -10,6 +12,7 @@ class WebServerSpec extends FlatSpec with Matchers with ScalatestRouteTest with 
   import SessionTestUtils._
 
   private implicit val cassandraClient = new CassandraClient(config)
+  private implicit val esClient = new ElasticsearchClient(config)
   private val app = new WebServer(config)
   private val routes = app.createRoutes
 
@@ -184,6 +187,21 @@ class WebServerSpec extends FlatSpec with Matchers with ScalatestRouteTest with 
   it should "fail when missing either email or password" in {
     Post("/api/users", User("", "password")) ~> routes ~> check {
       status shouldBe StatusCodes.BadRequest
+    }
+  }
+
+
+  behavior of "GET search"
+
+  it should "take a parameter q which is the query string" in {
+    Get("/search?q=hi") ~> routes ~> check {
+      status shouldBe StatusCodes.OK
+    }
+  }
+
+  it should "fail when not given a parameter q" in {
+    Get("/search") ~> Route.seal(routes) ~> check {
+      status shouldBe StatusCodes.NotFound
     }
   }
 }

@@ -1,10 +1,12 @@
+package buffon
+
 import com.datastax.driver.core._
 import com.google.common.util.concurrent.{FutureCallback, Futures, ListenableFuture}
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
 import org.mindrot.jbcrypt.BCrypt
 
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future, Promise}
 import scala.language.implicitConversions
 
 
@@ -43,7 +45,7 @@ object CassandraUtils {
   def parseOne(resultSet: ResultSet): Option[Row] = Option(resultSet.one())
 }
 
-class CassandraClient(config: Config) extends LazyLogging {
+class CassandraClient(config: Config)(implicit ec: ExecutionContextExecutor) extends LazyLogging {
   import CassandraUtils._
 
   private val keyspace = config.getString("cassandra.keyspace")
@@ -51,16 +53,15 @@ class CassandraClient(config: Config) extends LazyLogging {
     .addContactPoint(config.getString("cassandra.hostname"))
     .withPort(config.getInt("cassandra.port"))
     .build()
-  private implicit val executionContext = ExecutionContext.global
   private implicit val session = cluster.connect()
 
   def seed(): Unit = {
     logger.info(s"CREATE KEYSPACE IF NOT EXISTS $keyspace")
     session.execute(s"CREATE KEYSPACE IF NOT EXISTS $keyspace WITH replication = {'class': 'NetworkTopologyStrategy', 'datacenter1': 1} AND durable_writes = true;")
     logger.info(s"CREATE TABLE IF NOT EXISTS $keyspace.users")
-    session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.users (email text PRIMARY KEY, password_hash text);")
+    session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.users (email varchar PRIMARY KEY, password_hash varchar);")
     logger.info(s"CREATE TABLE IF NOT EXISTS $keyspace.refresh_tokens")
-    session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.refresh_tokens (selector text PRIMARY KEY, hash text, expiration time, sessionData text);")
+    session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.refresh_tokens (selector varchar PRIMARY KEY, hash varchar, expiration time, sessionData varchar);")
   }
 
   def close(): Unit = {
@@ -135,7 +136,7 @@ class CassandraClient(config: Config) extends LazyLogging {
 
 //  def selectUser(email: String, password: String): Future[Option[User]] = {
 //    val passwordHashF = selectUserHash(email)
-//    val query = cql"SELECT email, password_hash FROM $keyspace.users WHERE email = ? AND password_hash = ? LIMIT 1 ALLOW FILTERING"
+//    val query = cql"SELECT email, password_hash FROM $keyspace.users WHERE email = ? AND password_hash = ? LIMIT 1"
 //    passwordHashF.flatMap({
 //      case Some(passwordHash) => for {
 //          resultSet <- execute(query.map(_.bind(email, passwordHash)))
