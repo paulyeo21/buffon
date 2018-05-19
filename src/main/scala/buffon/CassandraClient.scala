@@ -94,7 +94,7 @@ class CassandraClient(config: Config)(implicit ec: ExecutionContextExecutor) ext
   def insertUser(email: String, password: String): Future[Boolean] = {
     val passwordHash = BCrypt.hashpw(password, BCrypt.gensalt(10))
     for {
-      rs <- session.executeAsync(s"INSERT INTO $keyspace.users(email, password_hash) VALUES ('$email', '$passwordHash') IF NOT EXISTS")
+      rs <- session.executeAsync(s"INSERT INTO $keyspace.users(email, password_hash) VALUES ('${email.toLowerCase}', '$passwordHash') IF NOT EXISTS")
     } yield {
       rs.wasApplied()
     }
