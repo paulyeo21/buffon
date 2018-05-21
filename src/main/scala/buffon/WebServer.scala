@@ -67,7 +67,11 @@ class WebServer(config: Config)(
         post {
           entity(as[User]) { user =>
             onSuccess(cassandraClient.insertUser(user.email, user.password)) { result =>
-              complete(HttpResponse(StatusCodes.Created))
+              if (result) {
+                complete(HttpResponse(StatusCodes.Created))
+              } else {
+                complete(HttpResponse(StatusCodes.BadRequest, entity = jsonHttpEntity(s"""{"message":"Email already exists"}""")))
+              }
             }
           }
         }
