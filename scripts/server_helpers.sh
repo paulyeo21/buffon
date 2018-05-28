@@ -6,8 +6,8 @@ curl -X POST 'http://localhost:8080/api/shoes' \
 -H 'Content-Type: application/json' \
 -d \
 '{
-  "name": "yeezy",
-  "brand": "adidas",
-  "createdAt": '$timestamp'
+  "name": "kobes",
+  "brand": "nike",
+  "createdAt": '$timestamp',
+  "sku": '$RANDOM'
 }'
-

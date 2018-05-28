@@ -1,28 +1,41 @@
 #!/bin/bash
 
 # curl -X DELETE localhost:9200/shoe
-curl -X PUT "localhost:9200/shoe" -d \
-'{
-  "settings": {
-    "number_of_shards": 1
-  },
-  "mappings": {
-    "doc": {
-      "properties": {
-        "name": {
-          "type": "text"
-        },
-        "brand": {
-          "type": "text"
-        },
-        "createdAt": {
-          "type": "date",
-          "format": "epoch_millis"
-        }
-      }
-    }
-  }
-}'
+# curl -X PUT "localhost:9200/shoe" -d \
+# '{
+#   "settings": {
+#     "number_of_shards": 1
+#   },
+#   "mappings": {
+#     "doc": {
+#       "properties": {
+#         "name": {
+#           "type": "text"
+#         },
+#         "brand": {
+#           "type": "text"
+#         },
+#         "createdAt": {
+#           "type": "date",
+#           "format": "epoch_millis"
+#         },
+#         "sku": {
+#           "type": "long"
+#         }
+#       }
+#     }
+#   }
+# }'
+
+# curl -X PUT 'localhost:9200/shoe' \
+# -H 'Content-Type: application/json' \
+# -d \
+# '{
+#   "name": "air force 1",
+#   "brand": "nike",
+#   "createdAt": 100120120,
+#   "sku": 1111111
+# }'
 
 # curl "localhost:9200/_search?pretty" -d \
 # '{
