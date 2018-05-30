@@ -6,6 +6,8 @@ import buffon.streams.elasticsearch.IndexShoeListing
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{BeforeAndAfter, BeforeAndAfterAll, FlatSpec, Matchers}
 
+import scala.util.Random
+
 
 class ElasticsearchClientSpec extends FlatSpec with Matchers with BeforeAndAfterAll with BeforeAndAfter {
   import com.sksamuel.elastic4s.http.ElasticDsl._
@@ -30,10 +32,24 @@ class ElasticsearchClientSpec extends FlatSpec with Matchers with BeforeAndAfter
   behavior of "searchShoeListings"
 
   it should "multi search on fields 'name' and 'brand'" in {
-    val shoe = ShoeListing("air force 1", "nike", System.currentTimeMillis())
+    val shoe = ShoeListing("air force 1", "nike", System.currentTimeMillis(), Random.nextLong())
 
     val index = IndexShoeListing(shoe).await
-    val search = esClient.searchShoeListings("nike").await
+    val search = esClient.searchShoeListings("nike", 0, 30).await
+
+    search.right.map { res =>
+      res.status shouldBe 200
+    }
+  }
+
+
+  behavior of "getShoeListings"
+
+  it should "query all for shoe listings with a count limit" in {
+    val shoe = ShoeListing("air force 1", "nike", System.currentTimeMillis(), Random.nextLong())
+
+    val index = IndexShoeListing(shoe).await
+    val search = esClient.getShoeListings(0, 30).await
 
     search.right.map { res =>
       res.status shouldBe 200

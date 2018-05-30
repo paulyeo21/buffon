@@ -4,7 +4,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpResponse, StatusCodes}
 import akka.http.scaladsl.server.{ExceptionHandler, Route}
 import akka.stream.ActorMaterializer
-import buffon.streams.elasticsearch.{IndexShoeListing, SearchShoeListings}
+import buffon.streams.elasticsearch.{GetShoeListings, IndexShoeListing, SearchShoeListings}
 import com.datastax.driver.core.exceptions.InvalidQueryException
 import com.sksamuel.elastic4s.http.{RequestFailure, RequestSuccess}
 import com.softwaremill.session.{SessionConfig, SessionManager}
@@ -26,6 +26,7 @@ class WebServer(config: Config)(
   private val sessionConfig = SessionConfig.fromConfig() // looking for "akka.http.session.server-secret" in application.conf
   private implicit val sessionManager = new SessionManager[String](sessionConfig)
   private implicit val refreshTokenStorage = new CassandraRefreshTokenStorage(logger)
+  private val MAX_QUERY_SIZE = config.getInt("elasticsearch.maxQuerySize")
 
   def createRoutes: Route = handleExceptions(myExceptionHandler) {
     pathSingleSlash {
@@ -77,6 +78,14 @@ class WebServer(config: Config)(
         }
       } ~
       path("shoes") {
+        get {
+          parameters('from.as[Int] ? 0, 'size.as[Int] ? MAX_QUERY_SIZE) { (from, size) =>
+            onSuccess(GetShoeListings((from, size))) {
+              case Right(RequestSuccess(_, _, _, result)) => complete(ShoeListings(marshallSearchResponse(result)))
+              case Left(RequestFailure(status, _, _, error)) => complete(HttpResponse(status = status, entity = error.reason))
+            }
+          }
+        } ~
         post {
           entity(as[ShoeListing]) { shoe =>
             onSuccess(IndexShoeListing(shoe)) { result =>
@@ -84,14 +93,14 @@ class WebServer(config: Config)(
             }
           }
         }
-      }
-    } ~
-    path("search") {
-      get {
-        parameters('q) { q =>
-          onSuccess(SearchShoeListings(q)) {
-            case Right(RequestSuccess(_, _, _, result)) => complete(result.hits.hits.map(_.sourceAsString))
-            case Left(RequestFailure(status, _, _, error)) => complete(HttpResponse(status = status, entity = error.reason))
+      } ~
+      path("search") {
+        get {
+          parameters('q, 'from.as[Int] ? 0, 'size.as[Int] ? MAX_QUERY_SIZE) { (q, from, size) =>
+            onSuccess(SearchShoeListings(q, from, size)) {
+              case Right(RequestSuccess(_, _, _, result)) => complete(ShoeListings(marshallSearchResponse(result)))
+              case Left(RequestFailure(status, _, _, error)) => complete(HttpResponse(status = status, entity = error.reason))
+            }
           }
         }
       }
@@ -109,7 +118,7 @@ class WebServer(config: Config)(
   }
 
   private def myUserPassAuthenticator(email: String, password: String)(implicit cassandraClient: CassandraClient) = for {
-    userF <- cassandraClient.selectUser(email, "email")
+    userF <- cassandraClient.selectUser(email.toLowerCase(), "email")
   } yield for {
     user <- userF
     if BCrypt.checkpw(password, user.password)

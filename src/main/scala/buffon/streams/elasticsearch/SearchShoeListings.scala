@@ -10,9 +10,9 @@ import scala.concurrent.Future
 
 object SearchShoeListings {
   //noinspection ScalaDeprecation
-  def apply(q: String)(implicit esClient: ElasticsearchClient, materializer: ActorMaterializer): Future[ES_SearchResponse] = {
-    val source = Source.single(q)
-    val flow = Flow[String].mapAsyncUnordered(parallelism = 1)(esClient.searchShoeListings)
+  def apply(queryFromAndSize: (String, Int, Int))(implicit esClient: ElasticsearchClient, materializer: ActorMaterializer): Future[ES_SearchResponse] = {
+    val source = Source.single(queryFromAndSize)
+    val flow = Flow[(String, Int, Int)].mapAsyncUnordered(parallelism = 1)(esClient.searchShoeListings)
     val sink = Sink.last[ES_SearchResponse]
     source.via(flow).runWith(sink)
   }

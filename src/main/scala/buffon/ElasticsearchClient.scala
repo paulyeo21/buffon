@@ -18,6 +18,7 @@ object ElasticsearchUtils {
   val ES_SHOES_INDEX_BRAND_FIELD = "brand"
   val ES_SHOES_INDEX_NAME_FIELD = "name"
   val ES_SHOES_INDEX_TIMESTAMP_FIELD = "createdAt"
+  val ES_SHOES_INDEX_SKU_FIELD = "sku"
   val ES_INDICES = Seq(ES_SHOES_INDEX)
 
   type ES_SearchResponse = Either[RequestFailure, RequestSuccess[SearchResponse]]
@@ -29,6 +30,7 @@ class ElasticsearchClient(config: Config)(implicit ec: ExecutionContextExecutor)
   import com.sksamuel.elastic4s.http.ElasticDsl._
 
   private val esClient = HttpClient(ElasticsearchClientUri(config.getString("elasticsearch.hostname"), config.getInt("elasticsearch.port")))
+  private val MAX_QUERY_SIZE = config.getInt("elasticsearch.maxQuerySize")
 
   def execute[T, U](request: T)(
     implicit exec: HttpExecutable[T, U]
@@ -43,7 +45,8 @@ class ElasticsearchClient(config: Config)(implicit ec: ExecutionContextExecutor)
         mapping(ES_INDEX_TYPE).fields(
           textField(ES_SHOES_INDEX_NAME_FIELD),
           textField(ES_SHOES_INDEX_BRAND_FIELD),
-          dateField(ES_SHOES_INDEX_TIMESTAMP_FIELD)
+          dateField(ES_SHOES_INDEX_TIMESTAMP_FIELD),
+          longField(ES_SHOES_INDEX_SKU_FIELD)
         )
       )
     }.await
@@ -64,17 +67,27 @@ class ElasticsearchClient(config: Config)(implicit ec: ExecutionContextExecutor)
       indexInto(ES_SHOES_INDEX / ES_INDEX_TYPE).fields(
         ES_SHOES_INDEX_NAME_FIELD -> s.name,
         ES_SHOES_INDEX_BRAND_FIELD -> s.brand,
-        ES_SHOES_INDEX_TIMESTAMP_FIELD -> s.createdAt
+        ES_SHOES_INDEX_TIMESTAMP_FIELD -> s.createdAt,
+        ES_SHOES_INDEX_SKU_FIELD -> s.sku
       )
     }
   }
 
-  def searchShoeListings(q: String): Future[ES_SearchResponse] = {
+  def searchShoeListings(queryFromAndSize: (String, Int, Int) = ("", 0, MAX_QUERY_SIZE)): Future[ES_SearchResponse] = {
+    val (q, from, size) = queryFromAndSize
     //noinspection ScalaDeprecation
     esClient.execute {
-      search(ES_SHOES_INDEX / ES_INDEX_TYPE).query {
+      search(ES_SHOES_INDEX / ES_INDEX_TYPE).from(from).size(size).query {
         MultiMatchQueryDefinition(text = q, fuzziness = Some("AUTO")).fields(ES_SHOES_INDEX_NAME_FIELD, ES_SHOES_INDEX_BRAND_FIELD)
       }
+    }
+  }
+
+  def getShoeListings(fromAndSize: (Int, Int) = (0, MAX_QUERY_SIZE)): Future[ES_SearchResponse] = {
+    val (from, size) = fromAndSize
+    //noinspection ScalaDeprecation
+    esClient.execute {
+      search(ES_SHOES_INDEX / ES_INDEX_TYPE).matchAllQuery().from(from).size(size)
     }
   }
 }
