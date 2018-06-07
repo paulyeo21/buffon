@@ -32,24 +32,11 @@ class ElasticsearchClientSpec extends FlatSpec with Matchers with BeforeAndAfter
   behavior of "searchShoeListings"
 
   it should "multi search on fields 'name' and 'brand'" in {
-    val shoe = ShoeListing("air force 1", "nike", System.currentTimeMillis(), Random.nextLong())
+    val shoe = ShoeListing("air force 1", "nike", System.currentTimeMillis(), Random.nextLong(), "description", "deadstock", "male")
+    val payload = SearchPayload("", 0, 20, Map("condition" -> Seq("ds")))
 
     val index = IndexShoeListing(shoe).await
-    val search = esClient.searchShoeListings("nike", 0, 30).await
-
-    search.right.map { res =>
-      res.status shouldBe 200
-    }
-  }
-
-
-  behavior of "getShoeListings"
-
-  it should "query all for shoe listings with a count limit" in {
-    val shoe = ShoeListing("air force 1", "nike", System.currentTimeMillis(), Random.nextLong())
-
-    val index = IndexShoeListing(shoe).await
-    val search = esClient.getShoeListings(0, 30).await
+    val search = esClient.searchShoeListings(payload).await
 
     search.right.map { res =>
       res.status shouldBe 200

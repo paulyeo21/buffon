@@ -77,19 +77,6 @@ Date: Wed, 02 May 2018 22:37:00 GMT
 Content-Length: 0
 ```
 
-GET /api/shoes?from=0&size=10
-```
-$ curl -i 'http://localhost:8080/api/shoes'
-
-HTTP/1.1 200 OK
-Server: akka-http/10.1.1
-Date: Wed, 16 May 2018 23:04:06 GMT
-Content-Type: application/json
-Content-Length: 77
-
-["{\"name\":\"air force 1\",\"brand\":\"nike\",\"createdAt\":1526510931721}"]%    
-```
-
 POST /api/shoes
 ```
 $ curl -i -X POST -H 'Content-Type: application/json' -d '{"name":"kyrie_2", "brand":"nike", "createdAt":1526510931721}' http://localhost:8080/api/shoes 
@@ -100,15 +87,24 @@ Date: Wed, 16 May 2018 23:05:28 GMT
 Content-Length: 0
 ```
 
-GET /api/search?q=niek&from0&size=20
+POST /api/search
 ```
-$ curl -i 'http://localhost:8080/api/search?q=niek'
+$ curl -iX POST 'http://localhost:8080/api/search' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "q": "abc",
+    "from": 0,
+    "size": 20,
+    "filters": {
+      "condition": ["ds"]
+    }
+  }'
 
 HTTP/1.1 200 OK
 Server: akka-http/10.1.1
-Date: Wed, 16 May 2018 23:04:06 GMT
+Date: Thu, 07 Jun 2018 18:53:18 GMT
 Content-Type: application/json
-Content-Length: 77
+Content-Length: 2377
 
-["{\"name\":\"air force 1\",\"brand\":\"nike\",\"createdAt\":1526510931721}"]%    
+{"shoeListings":[{"name":"yomommas","sku":1060,"description":"description","brand":"nike","condition":"ds","createdAt":1528158413,"gender":"male"},{"name":"yomommas","sku":3214,"description":"description","brand":"adidas","condition":"ds","createdAt":1528158413,"gender":"male"}]}
 ```

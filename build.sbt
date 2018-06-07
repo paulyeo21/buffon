@@ -19,7 +19,6 @@ libraryDependencies ++= {
     "com.softwaremill.akka-http-session" %% "core" % "0.5.5",
     "com.typesafe" % "config" % "1.3.2",
     "com.lightbend.akka" %% "akka-stream-alpakka-cassandra" % "0.19",
-//    "com.lightbend.akka" %% "akka-stream-alpakka-elasticsearch" % "0.19",
     "com.sksamuel.elastic4s" %% "elastic4s-core" % elastic4sV,
     "com.sksamuel.elastic4s" %% "elastic4s-http" % elastic4sV,
     "com.sksamuel.elastic4s" %% "elastic4s-spray-json" % elastic4sV,

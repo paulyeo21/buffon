@@ -6,6 +6,7 @@ import com.sksamuel.elastic4s.http.index.IndexResponse
 import com.sksamuel.elastic4s.http.index.admin.FlushIndexResponse
 import com.sksamuel.elastic4s.http.search.SearchResponse
 import com.sksamuel.elastic4s.http.{HttpClient, HttpExecutable, RequestFailure, RequestSuccess}
+import com.sksamuel.elastic4s.searches.queries.BoolQueryDefinition
 import com.sksamuel.elastic4s.searches.queries.matches.MultiMatchQueryDefinition
 import com.typesafe.config.Config
 
@@ -19,6 +20,10 @@ object ElasticsearchUtils {
   val ES_SHOES_INDEX_NAME_FIELD = "name"
   val ES_SHOES_INDEX_TIMESTAMP_FIELD = "createdAt"
   val ES_SHOES_INDEX_SKU_FIELD = "sku"
+  val ES_SHOES_INDEX_DESCRIPTION_FIELD = "description"
+  val ES_SHOES_INDEX_CONDITION_FIELD = "condition"
+  val ES_SHOES_INDEX_GENDER_FIELD = "gender"
+  val ES_SHOES_INDEX_SIZES_FIELD = "sizes"
   val ES_INDICES = Seq(ES_SHOES_INDEX)
 
   type ES_SearchResponse = Either[RequestFailure, RequestSuccess[SearchResponse]]
@@ -44,9 +49,12 @@ class ElasticsearchClient(config: Config)(implicit ec: ExecutionContextExecutor)
       createIndex(ES_SHOES_INDEX).mappings(
         mapping(ES_INDEX_TYPE).fields(
           textField(ES_SHOES_INDEX_NAME_FIELD),
-          textField(ES_SHOES_INDEX_BRAND_FIELD),
+          keywordField(ES_SHOES_INDEX_BRAND_FIELD),
           dateField(ES_SHOES_INDEX_TIMESTAMP_FIELD),
-          longField(ES_SHOES_INDEX_SKU_FIELD)
+          longField(ES_SHOES_INDEX_SKU_FIELD),
+          textField(ES_SHOES_INDEX_DESCRIPTION_FIELD),
+          keywordField(ES_SHOES_INDEX_CONDITION_FIELD),
+          keywordField(ES_SHOES_INDEX_GENDER_FIELD)
         )
       )
     }.await
@@ -68,26 +76,41 @@ class ElasticsearchClient(config: Config)(implicit ec: ExecutionContextExecutor)
         ES_SHOES_INDEX_NAME_FIELD -> s.name,
         ES_SHOES_INDEX_BRAND_FIELD -> s.brand,
         ES_SHOES_INDEX_TIMESTAMP_FIELD -> s.createdAt,
-        ES_SHOES_INDEX_SKU_FIELD -> s.sku
+        ES_SHOES_INDEX_SKU_FIELD -> s.sku,
+        ES_SHOES_INDEX_DESCRIPTION_FIELD -> s.description,
+        ES_SHOES_INDEX_CONDITION_FIELD -> s.condition,
+        ES_SHOES_INDEX_GENDER_FIELD -> s.gender
       )
     }
   }
 
-  def searchShoeListings(queryFromAndSize: (String, Int, Int) = ("", 0, MAX_QUERY_SIZE)): Future[ES_SearchResponse] = {
-    val (q, from, size) = queryFromAndSize
-    //noinspection ScalaDeprecation
-    esClient.execute {
-      search(ES_SHOES_INDEX / ES_INDEX_TYPE).from(from).size(size).query {
-        MultiMatchQueryDefinition(text = q, fuzziness = Some("AUTO")).fields(ES_SHOES_INDEX_NAME_FIELD, ES_SHOES_INDEX_BRAND_FIELD)
-      }
-    }
-  }
+  /*
+    Search ES  for shoes given query string, document start index (from), number of documents to retrieve (size),
+    and a map of fields to values to filter results (filters).
+    Note: If query string is empty, method retrieves all documents instead of default result of matching with an empty
+          string of returning no documents.
+   */
+  def searchShoeListings(payload: SearchPayload): Future[ES_SearchResponse] = {
+    val filterQueries = payload.filters.map { case (field, values) =>
+      termsQuery(field, values)
+    }.toSeq
 
-  def getShoeListings(fromAndSize: (Int, Int) = (0, MAX_QUERY_SIZE)): Future[ES_SearchResponse] = {
-    val (from, size) = fromAndSize
+    val multiMatchQuery = MultiMatchQueryDefinition(text = payload.q, fuzziness = Some("AUTO"))
+      .fields(ES_SHOES_INDEX_NAME_FIELD, ES_SHOES_INDEX_DESCRIPTION_FIELD)
+
     //noinspection ScalaDeprecation
-    esClient.execute {
-      search(ES_SHOES_INDEX / ES_INDEX_TYPE).matchAllQuery().from(from).size(size)
+    if (payload.q.isEmpty) {
+      esClient.execute {
+        search(ES_SHOES_INDEX / ES_INDEX_TYPE).from(payload.from).size(payload.size).query {
+          BoolQueryDefinition(filters = filterQueries, must = Seq(matchAllQuery))
+        }
+      }
+    } else {
+      esClient.execute {
+        search(ES_SHOES_INDEX / ES_INDEX_TYPE).from(payload.from).size(payload.size).query {
+          BoolQueryDefinition(filters = filterQueries, must = Seq(multiMatchQuery))
+        }
+      }
     }
   }
 }
