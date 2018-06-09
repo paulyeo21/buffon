@@ -21,7 +21,8 @@ gender = genders.sample
 #     "sku": #{sku},
 #     "description": "description",
 #     "condition": "#{condition}",
-#     "gender": "#{gender}"
+#     "gender": "#{gender}",
+#     "sizes": [9, 10, 10.5, 11]
 #   }'`
 
 puts `curl -iX POST 'http://localhost:8080/api/search' \
@@ -31,6 +32,6 @@ puts `curl -iX POST 'http://localhost:8080/api/search' \
     "from": 0,
     "size": 20,
     "filters": {
-      "condition": ["ds"]
+      "sizes": ["8","10"]
     }
   }'`

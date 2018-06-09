@@ -1,52 +1,44 @@
 #!/bin/bash
 
-curl -X DELETE localhost:9200/shoe
-curl -X PUT "localhost:9200/shoe" -d \
-'{
-  "settings": {
-    "number_of_shards": 1
-  },
-  "mappings": {
-    "doc": {
-      "properties": {
-        "name": {
-          "type": "text"
-        },
-        "description": {
-          "type": "text"
-        },
-        "condition": {
-          "type": "keyword"
-        },
-        "brand": {
-          "type": "keyword"
-        },
-        "gender": {
-          "type": "keyword"
-        },
-        "createdAt": {
-          "type": "date",
-          "format": "epoch_millis"
-        },
-        "sku": {
-          "type": "long"
-        },
-        "sizes": {
-          "type": "integer_range"
-        }
-      }
-    }
-  }
-}'
+# curl -X DELETE localhost:9200/shoe
+# curl -X PUT "localhost:9200/shoe" \
+# -H 'Content-Type: application/json' \
+# -d \
+# '{
+#   "settings": {
+#     "number_of_shards": 1
+#   },
+#   "mappings": {
+#     "doc": {
+#       "properties": {
+#         "name": { "type": "text" },
+#         "description": { "type": "text" },
+#         "condition": { "type": "keyword" },
+#         "brand": { "type": "keyword" },
+#         "gender": { "type": "keyword" },
+#         "createdAt": {
+#           "type": "date",
+#           "format": "epoch_millis"
+#         },
+#         "sku": { "type": "long" },
+#         "sizes": { "type": "float" }
+#       }
+#     }
+#   }
+# }'
 
 # curl -X PUT 'localhost:9200/shoe' \
 # -H 'Content-Type: application/json' \
 # -d \
 # '{
-#   "name": "air force 1",
-#   "brand": "nike",
-#   "createdAt": 100120120,
-#   "sku": 1111111
+#   "name": "def",
+#   "brand": "puma",
+#   "createdAt": 1,
+#   "sku": 1,
+#   "description": "description",
+#   "condition": "ds",
+#   "gender": "male",
+#   "sizes": [9, 10, 10.5, 11]
 # }'
 
 # curl "localhost:9200/_search?pretty" -d \

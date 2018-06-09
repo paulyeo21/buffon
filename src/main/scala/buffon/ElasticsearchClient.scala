@@ -54,7 +54,8 @@ class ElasticsearchClient(config: Config)(implicit ec: ExecutionContextExecutor)
           longField(ES_SHOES_INDEX_SKU_FIELD),
           textField(ES_SHOES_INDEX_DESCRIPTION_FIELD),
           keywordField(ES_SHOES_INDEX_CONDITION_FIELD),
-          keywordField(ES_SHOES_INDEX_GENDER_FIELD)
+          keywordField(ES_SHOES_INDEX_GENDER_FIELD),
+          floatField(ES_SHOES_INDEX_SIZES_FIELD)
         )
       )
     }.await
@@ -79,7 +80,8 @@ class ElasticsearchClient(config: Config)(implicit ec: ExecutionContextExecutor)
         ES_SHOES_INDEX_SKU_FIELD -> s.sku,
         ES_SHOES_INDEX_DESCRIPTION_FIELD -> s.description,
         ES_SHOES_INDEX_CONDITION_FIELD -> s.condition,
-        ES_SHOES_INDEX_GENDER_FIELD -> s.gender
+        ES_SHOES_INDEX_GENDER_FIELD -> s.gender,
+        ES_SHOES_INDEX_SIZES_FIELD -> s.sizes
       )
     }
   }
