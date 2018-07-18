@@ -1,4 +1,4 @@
-name := "shoe-dawg-backend"
+name := "buffon"
 version := "1.0"
 scalaVersion := "2.12.5"
 //dockerBaseImage := "openjdk:jre-alpine"
@@ -26,6 +26,15 @@ libraryDependencies ++= {
     "org.scalatest" %% "scalatest" % scalaTestV % Test,
     "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpV % Test
   )
+}
+
+// https://github.com/sbt/sbt-assembly
+test in assembly := {}
+assemblyMergeStrategy in assembly := {
+  case "META-INF/io.netty.versions.properties" => MergeStrategy.first
+  case x =>
+    val oldStrategy = (assemblyMergeStrategy in assembly).value
+    oldStrategy(x)
 }
 
 //enablePlugins(JavaAppPackaging)

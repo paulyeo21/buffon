@@ -1,29 +1,17 @@
-# Setup
-Install Intellij CE: https://www.jetbrains.com/idea/download/#section=mac 
+# Local installation
+[akka http](https://doc.akka.io/docs/akka-http/current/introduction.html)
 
-Once Intellij is up go to plugins and download Scala and SBT.
+[cassandra](http://cassandra.apache.org/doc/latest/getting_started/installing.html)
 
-Install Cassandra:
-1. brew install python
-2. pip install cql
-3. brew install cassandra
+[elasticsearch](https://www.elastic.co/guide/en/elasticsearch/reference/current/install-elasticsearch.html)
 
-# Commands
+# Useful commands
 
 sbt run
 
 sbt test
 
 sbt scalastyle
-
-sbt docker:publishLocal
-
-docker run \
---rn \
--p 8080:8080 \
-shoe-dawg-backend:1.0
-
-brew services start cassandra
 
 cqlsh
 
@@ -108,3 +96,8 @@ Content-Length: 2377
 
 {"shoeListings":[{"name":"yomommas","sku":1060,"description":"description","brand":"nike","condition":"ds","createdAt":1528158413,"gender":"male"},{"name":"yomommas","sku":3214,"description":"description","brand":"adidas","condition":"ds","createdAt":1528158413,"gender":"male"}]}
 ```
+
+# Deploy
+sbt assembly
+
+java -jar *.jar

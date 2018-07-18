@@ -32,7 +32,7 @@ class ElasticsearchClientSpec extends FlatSpec with Matchers with BeforeAndAfter
   behavior of "searchShoeListings"
 
   it should "multi search on fields 'name' and 'brand'" in {
-    val shoe = ShoeListing("air force 1", "nike", System.currentTimeMillis(), Random.nextLong(), "description", "deadstock", "male")
+    val shoe = ShoeListing("air force 1", "nike", System.currentTimeMillis(), Random.nextLong(), "description", "deadstock", "male", Seq())
     val payload = SearchPayload("", 0, 20, Map("condition" -> Seq("ds")))
 
     val index = IndexShoeListing(shoe).await

@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# Install Cassandra
+echo "deb http://www.apache.org/dist/cassandra/debian 36x main" | sudo tee -a /etc/apt/sources.list.d/cassandra.sources.list
+curl https://www.apache.org/dist/cassandra/KEYS | sudo apt-key add -
+sudo apt-get update
+sudo apt-get install -y cassandra
+
+# Install pip for cqlsh: http://thelastpickle.com/blog/2016/08/16/cqlsh-broken-on-fresh-installs.html
+sudo apt-get install -y python-pip
+pip install cassandra-driver  
+export CQLSH_NO_BUNDLED=true
