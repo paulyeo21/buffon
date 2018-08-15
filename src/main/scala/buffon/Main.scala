@@ -1,17 +1,19 @@
 package buffon
 
+import akka.Done
 import akka.actor.ActorSystem
-import akka.http.scaladsl.Http
+import akka.http.scaladsl.server.{HttpApp, Route}
 import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
 
-import scala.io.StdIn
+import scala.util.Try
 
 
-object Main extends App {
+object Main extends HttpApp with App {
   implicit val system = ActorSystem()
   implicit val executor = system.dispatcher
   implicit val materializer = ActorMaterializer()
+
   val config = ConfigFactory.load()
 
   implicit val cassandraClient = new CassandraClient(config)
@@ -20,14 +22,18 @@ object Main extends App {
   esClient.seed()
 
   val service = new WebServer(config)
-  val bindingFuture = Http().bindAndHandle(service.createRoutes, config.getString("api.hostname"), config.getInt("api.port"))
 
-  println(s"Server online at http://localhost:8080/\nPress RETURN to stop...")
-  StdIn.readLine() // let it run until user presses return
+  startServer(config.getString("api.hostname"), config.getInt("api.port"), system)
 
-  cassandraClient.close()
-  esClient.close()
-  bindingFuture
-    .flatMap(_.unbind()) // trigger unbinding from the port
-    .onComplete(_ => system.terminate()) // and shutdown when done
+  override def routes: Route = service.createRoutes
+
+  private def cleanupResources(): Unit = {
+    system.terminate()
+    cassandraClient.close()
+    esClient.close()
+  }
+
+  override def postServerShutdown(attempt: Try[Done], system: ActorSystem): Unit = {
+    cleanupResources()
+  }
 }
